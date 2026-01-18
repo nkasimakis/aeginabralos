@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σύγκριση Καιρού - Αίγινα & Μπράλος</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .weather-card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: transform 0.3s ease; }
+        .weather-card:hover { transform: translateY(-5px); }
+        .aegina-card { border-left: 5px solid #17a2b8; }
+        .mpralos-card { border-left: 5px solid #28a745; }
+        .weather-icon { font-size: 4rem; margin-bottom: 10px; }
+        .temp-display { font-size: 3rem; font-weight: bold; }
+        .weather-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+        .weather-detail-item { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; }
+        .weather-detail-item i { font-size: 1.5rem; margin-bottom: 5px; display: block; }
+        .loading-spinner { display: flex; justify-content: center; align-items: center; min-height: 150px; }
+        .day-rating { padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+        .rating-excellent { background: #28a745; color: white; }
+        .rating-good { background: #20c997; color: white; }
+        .rating-moderate { background: #ffc107; color: black; }
+        .rating-poor { background: #fd7e14; color: white; }
+        .rating-bad { background: #dc3545; color: white; }
+        .watering-yes { color: #28a745; font-weight: bold; }
+        .watering-no { color: #dc3545; font-weight: bold; }
+        .best-aegina { color: #17a2b8; font-weight: bold; }
+        .best-mpralos { color: #28a745; font-weight: bold; }
+        .best-tie { color: #6c757d; font-weight: bold; }
+        .forecast-card { border-radius: 10px; padding: 15px; text-align: center; margin: 5px; min-width: 120px; background: #fff; border: 1px solid #ddd; }
+        .forecast-card.optimal { border: 3px solid #28a745; background: #d4edda; }
+        .forecast-card.good { background: #fff3cd; }
+        .forecast-card.avoid { background: #f8d7da; }
+        .stat-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .stat-item:last-child { border-bottom: none; }
+        .weather-classification { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.85rem; font-weight: 500; }
+        .class-sunny { background: #fff3cd; color: #856404; }
+        .class-cloudy { background: #e2e3e5; color: #383d41; }
+        .class-rainy { background: #cce5ff; color: #004085; }
+        .class-stormy { background: #d4edda; color: #155724; }
+        .class-snowy { background: #f8f9fa; color: #495057; }
+        .plant-recommendation { padding: 20px; border-radius: 15px; margin: 10px 0; }
+        .plant-recommendation.water-now { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; }
+        .plant-recommendation.water-later { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); color: white; }
+        .plant-recommendation.no-water { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
+        .recommendation-icon { font-size: 3rem; margin-bottom: 10px; }
+        @media (max-width: 768px) { .temp-display { font-size: 2rem; } .weather-icon { font-size: 3rem; } .weather-details { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1"><i class="bi bi-cloud-sun"></i> Σύγκριση Καιρού</span>
+            <span class="navbar-text text-white" id="currentDate"></span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card weather-card aegina-card">
+                    <div class="card-header bg-info text-white">
+                        <h4><i class="bi bi-geo-alt"></i> Αίγινα</h4>
+                        <small>37.754337, 23.459760 | Υψόμετρο: 180μ</small>
+                    </div>
+                    <div class="card-body" id="aeginaWeather">
+                        <div class="loading-spinner"><div class="spinner-border text-info"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card weather-card mpralos-card">
+                    <div class="card-header bg-success text-white">
+                        <h4><i class="bi bi-geo-alt"></i> Μπράλος</h4>
+                        <small>38.724759, 22.463558 | Υψόμετρο: 330μ</small>
+                    </div>
+                    <div class="card-body" id="mpralosWeather">
+                        <div class="loading-spinner"><div class="spinner-border text-success"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning"><h5><i class="bi bi-bar-chart"></i> Σύγκριση Καιρού Σήμερα</h5></div>
+                    <div class="card-body" id="comparisonSection">
+                        <div class="loading-spinner"><div class="spinner-border text-warning"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white"><h5><i class="bi bi-flower1"></i> Πότισμα Φυτών - Συστάσεις</h5></div>
+                    <div class="card-body" id="plantWatering">
+                        <div class="loading-spinner"><div class="spinner-border text-success"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white"><h5><i class="bi bi-calendar-week"></i> Πρόβλεψη 7 Ημερών - Βέλτιστη Ημέρα Ποτίσματος</h5></div>
+                    <div class="card-body table-responsive" id="forecastSection">
+                        <div class="loading-spinner"><div class="spinner-border text-primary"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Ιστορικό Καταγραφής Καιρού</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light me-2" onclick="exportLog()"><i class="bi bi-download"></i> Εξαγωγή</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearLog()"><i class="bi bi-trash"></i> Καθαρισμός</button>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-striped table-hover" id="historyTable">
+                            <thead class="table-dark">
+                                <tr><th>Ημερομηνία</th><th>Αίγινα</th><th>Μπράλος</th><th>Καλύτερη</th><th>Αξιολόγηση</th><th>Πότισμα</th></tr>
+                            </thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white"><h5><i class="bi bi-trophy"></i> Στατιστικά Αίγινας</h5></div>
+                    <div class="card-body" id="aeginaStats"><p class="text-muted">Δεν υπάρχουν δεδομένα</p></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white"><h5><i class="bi bi-trophy"></i> Στατιστικά Μπράλου</h5></div>
+                    <div class="card-body" id="mpralosStats"><p class="text-muted">Δεν υπάρχουν δεδομένα</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-4">
+        <p class="mb-0"><i class="bi bi-cloud-sun"></i> Σύγκριση Καιρού | Δεδομένα: <a href="https://open-meteo.com/" class="text-info" target="_blank">Open-Meteo</a></p>
+        <small>Ενημέρωση: <span id="lastUpdate">-</span></small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const LOCATIONS = {
+            aegina: { name: 'Αίγινα', lat: 37.754337, lon: 23.459760, elevation: 180 },
+            mpralos: { name: 'Μπράλος', lat: 38.724759, lon: 22.463558, elevation: 330 }
+        };
+
+        const WEATHER_CODES = {
+            0: { text: 'Αίθριος', icon: 'bi-sun', class: 'class-sunny' },
+            1: { text: 'Κυρίως αίθριος', icon: 'bi-sun', class: 'class-sunny' },
+            2: { text: 'Μερικώς νεφελώδης', icon: 'bi-cloud-sun', class: 'class-cloudy' },
+            3: { text: 'Νεφελώδης', icon: 'bi-cloud', class: 'class-cloudy' },
+            45: { text: 'Ομίχλη', icon: 'bi-cloud-fog', class: 'class-cloudy' },
+            48: { text: 'Παγωμένη ομίχλη', icon: 'bi-cloud-fog2', class: 'class-cloudy' },
+            51: { text: 'Ελαφρύ ψιλόβροχο', icon: 'bi-cloud-drizzle', class: 'class-rainy' },
+            53: { text: 'Μέτριο ψιλόβροχο', icon: 'bi-cloud-drizzle', class: 'class-rainy' },
+            55: { text: 'Έντονο ψιλόβροχο', icon: 'bi-cloud-drizzle', class: 'class-rainy' },
+            61: { text: 'Ελαφριά βροχή', icon: 'bi-cloud-rain', class: 'class-rainy' },
+            63: { text: 'Μέτρια βροχή', icon: 'bi-cloud-rain', class: 'class-rainy' },
+            65: { text: 'Έντονη βροχή', icon: 'bi-cloud-rain-heavy', class: 'class-rainy' },
+            71: { text: 'Ελαφρύ χιόνι', icon: 'bi-snow', class: 'class-snowy' },
+            73: { text: 'Μέτριο χιόνι', icon: 'bi-snow2', class: 'class-snowy' },
+            75: { text: 'Έντονο χιόνι', icon: 'bi-snow3', class: 'class-snowy' },
+            80: { text: 'Ελαφριές μπόρες', icon: 'bi-cloud-rain', class: 'class-rainy' },
+            81: { text: 'Μέτριες μπόρες', icon: 'bi-cloud-rain', class: 'class-rainy' },
+            82: { text: 'Έντονες μπόρες', icon: 'bi-cloud-rain-heavy', class: 'class-rainy' },
+            95: { text: 'Καταιγίδα', icon: 'bi-cloud-lightning', class: 'class-stormy' },
+            96: { text: 'Καταιγίδα με χαλάζι', icon: 'bi-cloud-lightning-rain', class: 'class-stormy' },
+            99: { text: 'Έντονη καταιγίδα', icon: 'bi-cloud-lightning-rain', class: 'class-stormy' }
+        };
+
+        const GREEK_DAYS = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
+        const GREEK_MONTHS = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου', 'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου'];
+        const HISTORY_KEY = 'weather_history_log';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCurrentDate();
+            loadWeatherData();
+            loadHistory();
+            updateStatistics();
+            setInterval(loadWeatherData, 30 * 60 * 1000);
+        });
+
+        function updateCurrentDate() {
+            const now = new Date();
+            document.getElementById('currentDate').textContent = `${GREEK_DAYS[now.getDay()]}, ${now.getDate()} ${GREEK_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+        }
+
+        async function loadWeatherData() {
+            try {
+                const [aeginaData, mpralosData] = await Promise.all([fetchWeather(LOCATIONS.aegina), fetchWeather(LOCATIONS.mpralos)]);
+                displayWeather('aeginaWeather', aeginaData, 'info');
+                displayWeather('mpralosWeather', mpralosData, 'success');
+                displayComparison(aeginaData, mpralosData);
+                displayPlantWatering(aeginaData, mpralosData);
+                displayForecast(aeginaData, mpralosData);
+                logTodayWeather(aeginaData, mpralosData);
+                updateStatistics();
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('el-GR');
+            } catch (error) {
+                console.error('Error:', error);
+                ['aeginaWeather', 'mpralosWeather', 'comparisonSection', 'plantWatering', 'forecastSection'].forEach(id => {
+                    document.getElementById(id).innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Σφάλμα φόρτωσης</div>';
+                });
+            }
+        }
+
+        async function fetchWeather(location) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=Europe/Athens&forecast_days=7`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('API error');
+            const data = await response.json();
+            data.location = location;
+            return data;
+        }
+
+        function getWeatherInfo(code) {
+            return WEATHER_CODES[code] || { text: 'Άγνωστος', icon: 'bi-question', class: 'class-cloudy' };
+        }
+
+        function displayWeather(elementId, data, color) {
+            const c = data.current;
+            const w = getWeatherInfo(c.weather_code);
+            const dirs = ['Β', 'ΒΑ', 'Α', 'ΝΑ', 'Ν', 'ΝΔ', 'Δ', 'ΒΔ'];
+            document.getElementById(elementId).innerHTML = `
+                <div class="text-center">
+                    <i class="bi ${w.icon} weather-icon text-${color}"></i>
+                    <div class="temp-display">${Math.round(c.temperature_2m)}°C</div>
+                    <span class="weather-classification ${w.class}">${w.text}</span>
+                </div>
+                <div class="weather-details">
+                    <div class="weather-detail-item"><i class="bi bi-droplet text-primary"></i><strong>Υγρασία</strong><div>${c.relative_humidity_2m}%</div></div>
+                    <div class="weather-detail-item"><i class="bi bi-cloud-rain text-info"></i><strong>Βροχή</strong><div>${c.precipitation} mm</div></div>
+                    <div class="weather-detail-item"><i class="bi bi-wind text-secondary"></i><strong>Άνεμος</strong><div>${Math.round(c.wind_speed_10m)} km/h</div></div>
+                    <div class="weather-detail-item"><i class="bi bi-compass text-warning"></i><strong>Διεύθυνση</strong><div>${dirs[Math.round(c.wind_direction_10m / 45) % 8]}</div></div>
+                </div>`;
+        }
+
+        function displayComparison(aegina, mpralos) {
+            const as = calculateDayScore(aegina.current), ms = calculateDayScore(mpralos.current);
+            const ar = getDayRating(as), mr = getDayRating(ms);
+            const winner = as > ms ? 'Αίγινα' : (ms > as ? 'Μπράλος' : 'Ισοπαλία');
+            document.getElementById('comparisonSection').innerHTML = `
+                <div class="row">
+                    <div class="col-md-4"><h6 class="text-center">Θερμοκρασία</h6><div class="d-flex justify-content-between"><span class="text-info">Αίγινα: ${Math.round(aegina.current.temperature_2m)}°C</span><span class="text-success">Μπράλος: ${Math.round(mpralos.current.temperature_2m)}°C</span></div></div>
+                    <div class="col-md-4"><h6 class="text-center">Υγρασία</h6><div class="d-flex justify-content-between"><span class="text-info">Αίγινα: ${aegina.current.relative_humidity_2m}%</span><span class="text-success">Μπράλος: ${mpralos.current.relative_humidity_2m}%</span></div></div>
+                    <div class="col-md-4"><h6 class="text-center">Άνεμος</h6><div class="d-flex justify-content-between"><span class="text-info">Αίγινα: ${Math.round(aegina.current.wind_speed_10m)} km/h</span><span class="text-success">Μπράλος: ${Math.round(mpralos.current.wind_speed_10m)} km/h</span></div></div>
+                </div>
+                <div class="row mt-3"><div class="col-12 text-center">
+                    <h5>Συνολική Αξιολόγηση</h5>
+                    <div class="row"><div class="col-6"><span class="day-rating ${ar.class}">${ar.text}</span><p class="mt-2 mb-0">Αίγινα: ${as}/100</p></div><div class="col-6"><span class="day-rating ${mr.class}">${mr.text}</span><p class="mt-2 mb-0">Μπράλος: ${ms}/100</p></div></div>
+                    <div class="mt-3"><i class="bi bi-trophy text-warning"></i> <strong>Καλύτερη σήμερα: ${winner}</strong></div>
+                </div></div>`;
+        }
+
+        function calculateDayScore(c) {
+            let s = 100;
+            if (c.temperature_2m < 10 || c.temperature_2m > 35) s -= 30;
+            else if (c.temperature_2m < 15 || c.temperature_2m > 30) s -= 15;
+            if (c.precipitation > 10) s -= 40; else if (c.precipitation > 5) s -= 25; else if (c.precipitation > 1) s -= 10;
+            if (c.wind_speed_10m > 50) s -= 30; else if (c.wind_speed_10m > 30) s -= 20; else if (c.wind_speed_10m > 20) s -= 10;
+            if (c.relative_humidity_2m > 90 || c.relative_humidity_2m < 20) s -= 15;
+            if (c.weather_code >= 95) s -= 30; else if (c.weather_code >= 61) s -= 20; else if (c.weather_code >= 51) s -= 10;
+            return Math.max(0, Math.min(100, s));
+        }
+
+        function getDayRating(s) {
+            if (s >= 80) return { text: 'Εξαιρετική', class: 'rating-excellent' };
+            if (s >= 60) return { text: 'Καλή', class: 'rating-good' };
+            if (s >= 40) return { text: 'Μέτρια', class: 'rating-moderate' };
+            if (s >= 20) return { text: 'Κακή', class: 'rating-poor' };
+            return { text: 'Πολύ Κακή', class: 'rating-bad' };
+        }
+
+        function displayPlantWatering(aegina, mpralos) {
+            const ar = getWateringRecommendation(aegina), mr = getWateringRecommendation(mpralos);
+            document.getElementById('plantWatering').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6"><div class="plant-recommendation ${ar.class}"><div class="recommendation-icon"><i class="bi ${ar.icon}"></i></div><h5>Αίγινα</h5><p class="mb-0">${ar.text}</p><small>${ar.reason}</small></div></div>
+                    <div class="col-md-6"><div class="plant-recommendation ${mr.class}"><div class="recommendation-icon"><i class="bi ${mr.icon}"></i></div><h5>Μπράλος</h5><p class="mb-0">${mr.text}</p><small>${mr.reason}</small></div></div>
+                </div>`;
+        }
+
+        function getWateringRecommendation(data) {
+            const c = data.current, d = data.daily;
+            const rainToday = c.precipitation > 1 || (d.precipitation_probability_max[0] || 0) > 60;
+            const rainTomorrow = d.precipitation_probability_max[1] > 60;
+            if (rainToday || rainTomorrow) return { text: 'ΜΗΝ ΠΟΤΙΣΕΤΕ', reason: rainToday ? 'Βροχή σήμερα' : 'Βροχή αύριο', class: 'no-water', icon: 'bi-x-circle', shouldWater: false };
+            if (c.temperature_2m > 35 || c.wind_speed_10m > 30 || c.precipitation > 0) return { text: 'ΑΠΟΦΥΓΕΤΕ', reason: c.temperature_2m > 35 ? 'Πολύ ζέστη' : 'Δυνατός άνεμος/βροχή', class: 'water-later', icon: 'bi-exclamation-triangle', shouldWater: false };
+            if (c.temperature_2m > 25 && c.relative_humidity_2m < 50) return { text: 'ΠΟΤΙΣΤΕ ΣΗΜΕΡΑ', reason: `Ζέστη (${Math.round(c.temperature_2m)}°C), χαμηλή υγρασία (${c.relative_humidity_2m}%)`, class: 'water-now', icon: 'bi-check-circle', shouldWater: true };
+            const h = new Date().getHours();
+            if ((h >= 6 && h <= 9) || (h >= 18 && h <= 20)) return { text: 'ΚΑΛΗ ΩΡΑ', reason: 'Ιδανικές ώρες ποτίσματος', class: 'water-now', icon: 'bi-check-circle', shouldWater: true };
+            return { text: 'ΕΛΕΓΞΤΕ ΑΡΓΟΤΕΡΑ', reason: 'Πρωί ή απόγευμα καλύτερα', class: 'water-later', icon: 'bi-clock', shouldWater: false };
+        }
+
+        function displayForecast(aegina, mpralos) {
+            const days = aegina.daily.time;
+            let html = '<div class="d-flex flex-wrap justify-content-center">', optimalDay = null, optimalScore = -1;
+            for (let i = 0; i < days.length; i++) {
+                const date = new Date(days[i]);
+                const ws = calculateWateringScore(aegina.daily, mpralos.daily, i);
+                if (ws > optimalScore && i > 0) { optimalScore = ws; optimalDay = i; }
+                const cardClass = i === optimalDay ? 'optimal' : (ws > 60 ? 'good' : (ws < 30 ? 'avoid' : ''));
+                const w = getWeatherInfo(aegina.daily.weather_code[i]);
+                html += `<div class="forecast-card ${cardClass}"><strong>${GREEK_DAYS[date.getDay()]}</strong><br><small>${date.getDate()}/${date.getMonth()+1}</small><br><i class="bi ${w.icon} fs-3"></i><br><span>${Math.round(aegina.daily.temperature_2m_max[i])}°/${Math.round(aegina.daily.temperature_2m_min[i])}°</span><br><small class="${aegina.daily.precipitation_probability_max[i]>50?'text-primary':''}"><i class="bi bi-droplet"></i> ${aegina.daily.precipitation_probability_max[i]}%</small><br>${i === optimalDay ? '<span class="badge bg-success">Βέλτιστη</span>' : ''}</div>`;
+            }
+            html += '</div>';
+            if (optimalDay !== null) {
+                const od = new Date(days[optimalDay]);
+                html += `<div class="alert alert-success mt-3 text-center"><i class="bi bi-calendar-check"></i> <strong>Βέλτιστη ημέρα ποτίσματος:</strong> ${GREEK_DAYS[od.getDay()]}, ${od.getDate()}/${od.getMonth()+1}</div>`;
+            }
+            document.getElementById('forecastSection').innerHTML = html;
+        }
+
+        function calculateWateringScore(a, m, i) {
+            let s = 100;
+            const pp = (a.precipitation_probability_max[i] + m.precipitation_probability_max[i]) / 2;
+            const pr = (a.precipitation_sum[i] + m.precipitation_sum[i]) / 2;
+            const tm = (a.temperature_2m_max[i] + m.temperature_2m_max[i]) / 2;
+            if (pp > 70) s -= 50; else if (pp > 40) s -= 25;
+            if (pr > 5) s -= 40; else if (pr > 1) s -= 20;
+            if (tm > 38 || tm < 5) s -= 30; else if (tm > 33) s -= 15;
+            if (tm >= 20 && tm <= 28) s += 10;
+            return Math.max(0, Math.min(100, s));
+        }
+
+        function logTodayWeather(aegina, mpralos) {
+            const today = new Date().toISOString().split('T')[0];
+            const history = getHistory();
+            const entry = createHistoryEntry(today, aegina, mpralos);
+            const idx = history.findIndex(e => e.date === today);
+            if (idx >= 0) history[idx] = entry; else history.unshift(entry);
+            while (history.length > 365) history.pop();
+            saveHistory(history);
+            displayHistory(history);
+        }
+
+        function createHistoryEntry(date, aegina, mpralos) {
+            const as = calculateDayScore(aegina.current), ms = calculateDayScore(mpralos.current);
+            const aw = getWateringRecommendation(aegina), mw = getWateringRecommendation(mpralos);
+            return { date, aegina: { temp: aegina.current.temperature_2m, humidity: aegina.current.relative_humidity_2m, precip: aegina.current.precipitation, weatherCode: aegina.current.weather_code, score: as, shouldWater: aw.shouldWater }, mpralos: { temp: mpralos.current.temperature_2m, humidity: mpralos.current.relative_humidity_2m, precip: mpralos.current.precipitation, weatherCode: mpralos.current.weather_code, score: ms, shouldWater: mw.shouldWater }, bestLocation: as > ms ? 'aegina' : (ms > as ? 'mpralos' : 'tie') };
+        }
+
+        function getHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; } }
+        function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+        function loadHistory() { displayHistory(getHistory()); }
+
+        function displayHistory(history) {
+            const tbody = document.getElementById('historyBody');
+            if (!history.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Δεν υπάρχουν καταγραφές</td></tr>'; return; }
+            tbody.innerHTML = history.slice(0, 30).map(e => {
+                const d = new Date(e.date), aw = getWeatherInfo(e.aegina.weatherCode), mw = getWeatherInfo(e.mpralos.weatherCode);
+                const ar = getDayRating((e.aegina.score + e.mpralos.score) / 2);
+                const bl = e.bestLocation === 'aegina' ? ['Αίγινα', 'best-aegina'] : (e.bestLocation === 'mpralos' ? ['Μπράλος', 'best-mpralos'] : ['Ισοπαλία', 'best-tie']);
+                const sw = e.aegina.shouldWater || e.mpralos.shouldWater;
+                return `<tr><td>${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}</td><td><i class="bi ${aw.icon}"></i> ${Math.round(e.aegina.temp)}°C<br><small class="text-muted">${aw.text}</small></td><td><i class="bi ${mw.icon}"></i> ${Math.round(e.mpralos.temp)}°C<br><small class="text-muted">${mw.text}</small></td><td class="${bl[1]}">${bl[0]}</td><td><span class="day-rating ${ar.class}">${ar.text}</span></td><td class="${sw?'watering-yes':'watering-no'}"><i class="bi bi-${sw?'check':'x'}-circle"></i> ${sw?'Ναι':'Όχι'}</td></tr>`;
+            }).join('');
+        }
+
+        function updateStatistics() {
+            const h = getHistory();
+            if (!h.length) return;
+            document.getElementById('aeginaStats').innerHTML = renderStats(calcStats(h, 'aegina'));
+            document.getElementById('mpralosStats').innerHTML = renderStats(calcStats(h, 'mpralos'));
+        }
+
+        function calcStats(h, loc) {
+            const d = h.map(x => x[loc]), sc = d.map(x => x.score), tp = d.map(x => x.temp);
+            return { avgScore: Math.round(sc.reduce((a,b)=>a+b,0)/sc.length), bestScore: Math.max(...sc), worstScore: Math.min(...sc), avgTemp: Math.round(tp.reduce((a,b)=>a+b,0)/tp.length), maxTemp: Math.round(Math.max(...tp)), minTemp: Math.round(Math.min(...tp)), wateringDays: d.filter(x=>x.shouldWater).length, bestDays: h.filter(x=>x.bestLocation===loc).length, totalDays: h.length };
+        }
+
+        function renderStats(s) {
+            return `<div class="stat-item"><span>Μέση βαθμολογία:</span><strong>${s.avgScore}/100</strong></div><div class="stat-item"><span>Καλύτερη ημέρα:</span><strong>${s.bestScore}/100</strong></div><div class="stat-item"><span>Χειρότερη ημέρα:</span><strong>${s.worstScore}/100</strong></div><div class="stat-item"><span>Μέση θερμοκρασία:</span><strong>${s.avgTemp}°C</strong></div><div class="stat-item"><span>Εύρος θερμοκρασίας:</span><strong>${s.minTemp}°C - ${s.maxTemp}°C</strong></div><div class="stat-item"><span>Ημέρες ποτίσματος:</span><strong>${s.wateringDays}/${s.totalDays}</strong></div><div class="stat-item"><span>Καλύτερη τοποθεσία:</span><strong>${s.bestDays}/${s.totalDays} ημέρες</strong></div>`;
+        }
+
+        function clearLog() { if (confirm('Διαγραφή ιστορικού;')) { localStorage.removeItem(HISTORY_KEY); loadHistory(); updateStatistics(); document.getElementById('aeginaStats').innerHTML = document.getElementById('mpralosStats').innerHTML = '<p class="text-muted">Δεν υπάρχουν δεδομένα</p>'; } }
+
+        function exportLog() {
+            const h = getHistory();
+            if (!h.length) { alert('Δεν υπάρχουν δεδομένα'); return; }
+            let csv = 'Ημερομηνία,Αίγινα Θερμ,Αίγινα Υγρασία,Αίγινα Βαθμ,Μπράλος Θερμ,Μπράλος Υγρασία,Μπράλος Βαθμ,Καλύτερη,Πότισμα\n';
+            h.forEach(e => { csv += `${e.date},${e.aegina.temp},${e.aegina.humidity},${e.aegina.score},${e.mpralos.temp},${e.mpralos.humidity},${e.mpralos.score},${e.bestLocation},${e.aegina.shouldWater||e.mpralos.shouldWater?'Ναι':'Όχι'}\n`; });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); link.download = `weather_log_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        }
+    </script>
+</body>
+</html>
