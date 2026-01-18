@@ -70,6 +70,11 @@
         .travel-card.recommended { background: #d4edda; border-left: 4px solid #28a745; }
         .travel-card.not-recommended { background: #f8d7da; border-left: 4px solid #dc3545; }
         .travel-card.neutral { background: #e2e3e5; border-left: 4px solid #6c757d; }
+        .boat-card { border-radius: 10px; padding: 15px; margin-top: 15px; }
+        .boat-safe { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; }
+        .boat-caution { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); color: white; }
+        .boat-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
+        .sea-indicator { display: inline-block; padding: 5px 12px; border-radius: 15px; margin: 3px; font-size: 0.85rem; }
         @media (max-width: 768px) { .temp-display { font-size: 2rem; } .weather-icon { font-size: 3rem; } .weather-details { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -258,6 +263,12 @@
             roses: { name: 'Τριαντάφυλλα', icon: '🌹', idealTemp: [15, 28], maxTemp: 35, minHumidity: 40, waterFreq: 'θερμό: καθημερινά, κρύο: 2-3/εβδ', needsMoreWater: true }
         };
 
+        // Sea/boat travel locations
+        const SEA_LOCATIONS = {
+            aeginaPort: { name: 'Λιμάνι Αίγινας', lat: 37.745107, lon: 23.424248 },
+            saronicGulf: { name: 'Σαρωνικός (πριν Πειραιά)', lat: 37.888070, lon: 23.564009 }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             updateCurrentDate();
             loadWeatherData();
@@ -273,11 +284,16 @@
 
         async function loadWeatherData() {
             try {
-                const [aeginaData, mpralosData] = await Promise.all([fetchWeather(LOCATIONS.aegina), fetchWeather(LOCATIONS.mpralos)]);
+                const [aeginaData, mpralosData, portData, seaData] = await Promise.all([
+                    fetchWeather(LOCATIONS.aegina), 
+                    fetchWeather(LOCATIONS.mpralos),
+                    fetchMarineWeather(SEA_LOCATIONS.aeginaPort),
+                    fetchMarineWeather(SEA_LOCATIONS.saronicGulf)
+                ]);
                 displayWeather('aeginaWeather', aeginaData, 'info');
                 displayWeather('mpralosWeather', mpralosData, 'success');
                 displayComparison(aeginaData, mpralosData);
-                displayGrandmaRecommendation(aeginaData, mpralosData);
+                displayGrandmaRecommendation(aeginaData, mpralosData, portData, seaData);
                 displayPlantRecommendations('aeginaPlants', aeginaData, AEGINA_PLANTS);
                 displayPlantRecommendations('mpralosPlants', mpralosData, MPRALOS_PLANTS);
                 displayForecast(aeginaData, mpralosData);
@@ -290,6 +306,15 @@
                     document.getElementById(id).innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Σφάλμα φόρτωσης</div>';
                 });
             }
+        }
+
+        async function fetchMarineWeather(location) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=wind_speed_10m_max,wind_direction_10m_dominant,wind_gusts_10m_max&timezone=Europe/Athens&forecast_days=7`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Marine API error');
+            const data = await response.json();
+            data.location = location;
+            return data;
         }
 
         async function fetchWeather(location) {
@@ -360,28 +385,47 @@
         }
 
         // Grandma health score calculation for asthmatic sensitive to cold
-        function calculateGrandmaScore(data) {
+        // Mpralos: wood stove, very warm small house (indoor = good in winter)
+        // Aegina: central oil heating, lots of humidity indoors (bad for asthma)
+        function calculateGrandmaScore(data, location) {
             const c = data.current;
             const temp = c.temperature_2m;
             const humidity = c.relative_humidity_2m;
             const wind = c.wind_speed_10m;
             const weatherCode = c.weather_code;
+            const isMpralos = location === 'mpralos';
+            const isAegina = location === 'aegina';
             
             let score = 100;
             let factors = [];
 
-            // Temperature factors (sensitive to cold)
-            if (temp < 5) { score -= 40; factors.push({ text: 'Πολύ κρύο', class: 'factor-bad' }); }
-            else if (temp < 10) { score -= 25; factors.push({ text: 'Κρύο', class: 'factor-bad' }); }
-            else if (temp < 15) { score -= 10; factors.push({ text: 'Δροσερά', class: 'factor-warning' }); }
-            else if (temp >= 18 && temp <= 26) { score += 10; factors.push({ text: 'Ιδανική θερμ.', class: 'factor-good' }); }
-            else if (temp > 35) { score -= 20; factors.push({ text: 'Πολύ ζέστη', class: 'factor-warning' }); }
+            // INDOOR CONDITIONS FACTOR
+            if (isMpralos) {
+                // Wood stove = warm & dry indoors, good for asthma in winter
+                factors.push({ text: 'Ξυλόσομπα (ζεστό)', class: 'factor-good' });
+                score += 10;
+                // Less penalty for cold outside since house is warm
+                if (temp < 5) { score -= 15; factors.push({ text: 'Κρύο έξω', class: 'factor-warning' }); }
+                else if (temp < 10) { score -= 5; factors.push({ text: 'Δροσερά έξω', class: 'factor-warning' }); }
+                else if (temp >= 15 && temp <= 26) { score += 10; factors.push({ text: 'Ιδανική θερμ.', class: 'factor-good' }); }
+                else if (temp > 35) { score -= 20; factors.push({ text: 'Πολύ ζέστη', class: 'factor-warning' }); }
+            } else if (isAegina) {
+                // Central oil heating + humid environment = bad for asthma
+                factors.push({ text: 'Υγρασία σπιτιού', class: 'factor-bad' });
+                score -= 15;
+                // Normal temperature factors but outdoor cold still matters
+                if (temp < 5) { score -= 30; factors.push({ text: 'Πολύ κρύο', class: 'factor-bad' }); }
+                else if (temp < 10) { score -= 15; factors.push({ text: 'Κρύο', class: 'factor-bad' }); }
+                else if (temp < 15) { score -= 5; factors.push({ text: 'Δροσερά', class: 'factor-warning' }); }
+                else if (temp >= 18 && temp <= 26) { score += 15; factors.push({ text: 'Ιδανική θερμ.', class: 'factor-good' }); }
+                else if (temp > 35) { score -= 20; factors.push({ text: 'Πολύ ζέστη', class: 'factor-warning' }); }
+            }
 
-            // Humidity factors (asthma)
-            if (humidity > 80) { score -= 25; factors.push({ text: 'Υψηλή υγρασία', class: 'factor-bad' }); }
+            // Outdoor humidity factors (affects going outside, asthma)
+            if (humidity > 80) { score -= 20; factors.push({ text: 'Υψηλή υγρασία', class: 'factor-bad' }); }
             else if (humidity > 70) { score -= 10; factors.push({ text: 'Αρκετή υγρασία', class: 'factor-warning' }); }
-            else if (humidity < 30) { score -= 15; factors.push({ text: 'Ξηρός αέρας', class: 'factor-warning' }); }
-            else if (humidity >= 40 && humidity <= 60) { score += 10; factors.push({ text: 'Ιδανική υγρασία', class: 'factor-good' }); }
+            else if (humidity < 30) { score -= 10; factors.push({ text: 'Ξηρός αέρας', class: 'factor-warning' }); }
+            else if (humidity >= 40 && humidity <= 60) { score += 5; factors.push({ text: 'Καλή υγρασία', class: 'factor-good' }); }
 
             // Wind factors (asthma)
             if (wind > 40) { score -= 30; factors.push({ text: 'Θυελλώδης', class: 'factor-bad' }); }
@@ -398,9 +442,90 @@
             return { score: Math.max(0, Math.min(100, score)), factors };
         }
 
-        function displayGrandmaRecommendation(aegina, mpralos) {
-            const aeginaHealth = calculateGrandmaScore(aegina);
-            const mpralosHealth = calculateGrandmaScore(mpralos);
+        // Convert wind speed to Beaufort scale
+        function windToBeaufort(kmh) {
+            if (kmh < 1) return 0;
+            if (kmh < 6) return 1;
+            if (kmh < 12) return 2;
+            if (kmh < 20) return 3;
+            if (kmh < 29) return 4;
+            if (kmh < 39) return 5;
+            if (kmh < 50) return 6;
+            if (kmh < 62) return 7;
+            if (kmh < 75) return 8;
+            if (kmh < 89) return 9;
+            if (kmh < 103) return 10;
+            if (kmh < 118) return 11;
+            return 12;
+        }
+
+        // Check if wind is from south (problematic for Aegina port)
+        function isSouthWind(degrees) {
+            // South is 180°, consider 135° to 225° as "south"
+            return degrees >= 135 && degrees <= 225;
+        }
+
+        function getBoatRecommendation(portData, seaData) {
+            const portWind = portData.current.wind_speed_10m;
+            const portDir = portData.current.wind_direction_10m;
+            const portGusts = portData.current.wind_gusts_10m;
+            const seaWind = seaData.current.wind_speed_10m;
+            const seaGusts = seaData.current.wind_gusts_10m;
+            
+            const portBeaufort = windToBeaufort(portWind);
+            const seaBeaufort = windToBeaufort(seaWind);
+            const southWind = isSouthWind(portDir);
+            
+            let status = 'safe';
+            let message = 'ΚΑΛΕΣ ΣΥΝΘΗΚΕΣ ΤΑΞΙΔΙΟΥ';
+            let details = [];
+            let warnings = [];
+
+            // Check Saronic Gulf (>4 Beaufort is hard)
+            if (seaBeaufort > 5) {
+                status = 'danger';
+                message = 'ΜΗ ΤΑΞΙΔΕΥΕΤΕ';
+                warnings.push(`Σαρωνικός: ${seaBeaufort} Μποφόρ - Επικίνδυνος`);
+            } else if (seaBeaufort > 4) {
+                status = 'caution';
+                message = 'ΔΥΣΚΟΛΟ ΤΑΞΙΔΙ';
+                warnings.push(`Σαρωνικός: ${seaBeaufort} Μποφόρ - Δύσκολες συνθήκες`);
+            } else if (seaBeaufort >= 4) {
+                status = status === 'safe' ? 'caution' : status;
+                warnings.push(`Σαρωνικός: ${seaBeaufort} Μποφόρ - Στο όριο`);
+            }
+
+            // Check Aegina port (south wind = can't moor)
+            if (southWind && portBeaufort >= 4) {
+                status = 'danger';
+                message = 'ΑΠΟΦΥΓΕΤΕ ΤΑΞΙΔΙ';
+                warnings.push(`Λιμάνι Αίγινας: Νότιος άνεμος ${portBeaufort} Μποφόρ - Δεν δένουν πλοία`);
+            } else if (southWind && portBeaufort >= 3) {
+                status = status === 'safe' ? 'caution' : status;
+                warnings.push(`Λιμάνι Αίγινας: Νότιος άνεμος - Πιθανά προβλήματα`);
+            }
+
+            // Add general info
+            const dirs = ['Β', 'ΒΑ', 'Α', 'ΝΑ', 'Ν', 'ΝΔ', 'Δ', 'ΒΔ'];
+            const portDirName = dirs[Math.round(portDir / 45) % 8];
+            details.push(`Λιμάνι Αίγινας: ${portBeaufort} Μποφόρ, ${portDirName} (${Math.round(portWind)} km/h)`);
+            details.push(`Σαρωνικός: ${seaBeaufort} Μποφόρ (${Math.round(seaWind)} km/h)`);
+            
+            if (portGusts > portWind * 1.5) {
+                details.push(`Ριπές: ${Math.round(portGusts)} km/h`);
+            }
+
+            if (status === 'safe') {
+                message = seaBeaufort <= 2 ? 'ΑΡΙΣΤΕΣ ΣΥΝΘΗΚΕΣ' : 'ΚΑΛΕΣ ΣΥΝΘΗΚΕΣ';
+            }
+
+            return { status, message, details, warnings, portBeaufort, seaBeaufort, southWind };
+        }
+
+        function displayGrandmaRecommendation(aegina, mpralos, portData, seaData) {
+            const aeginaHealth = calculateGrandmaScore(aegina, 'aegina');
+            const mpralosHealth = calculateGrandmaScore(mpralos, 'mpralos');
+            const boatRec = getBoatRecommendation(portData, seaData);
             
             // Calculate 7-day averages
             const aeginaForecast = calculate7DayHealthScore(aegina);
@@ -416,7 +541,7 @@
                 todayRec = 'ΜΠΡΑΛΟΣ';
                 todayClass = 'mpralos-rec';
             } else {
-                todayRec = mpralosHealth.score >= 50 ? 'ΜΠΡΑΛΟΣ (συνήθης τοποθεσία)' : 'ΑΙΓΙΝΑ';
+                todayRec = mpralosHealth.score >= 50 ? 'ΜΠΡΑΛΟΣ' : 'ΑΙΓΙΝΑ';
                 todayClass = mpralosHealth.score >= 50 ? 'mpralos-rec' : 'aegina-rec';
             }
 
@@ -460,9 +585,40 @@
                     <h3>${todayRec}</h3>
                 </div>
 
+                <!-- Boat Travel Section -->
+                <div class="boat-card boat-${boatRec.status}">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 text-center">
+                            <i class="bi bi-${boatRec.status === 'safe' ? 'ship' : boatRec.status === 'caution' ? 'exclamation-triangle' : 'x-octagon'}" style="font-size: 2.5rem;"></i>
+                            <h5 class="mt-2 mb-0">${boatRec.message}</h5>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row">
+                                <div class="col-6">
+                                    ${boatRec.details.map(d => `<div class="small"><i class="bi bi-wind"></i> ${d}</div>`).join('')}
+                                </div>
+                                <div class="col-6">
+                                    ${boatRec.warnings.length > 0 ? boatRec.warnings.map(w => `<div class="small"><i class="bi bi-exclamation-circle"></i> ${w}</div>`).join('') : '<div class="small"><i class="bi bi-check-circle"></i> Κανένα πρόβλημα</div>'}
+                                </div>
+                            </div>
+                            <div class="mt-2 small">
+                                <span class="sea-indicator ${boatRec.southWind ? 'bg-warning text-dark' : 'bg-light'}">
+                                    ${boatRec.southWind ? '<i class="bi bi-arrow-down"></i> Νότιος' : '<i class="bi bi-check"></i> Όχι νότιος'}
+                                </span>
+                                <span class="sea-indicator ${boatRec.seaBeaufort > 4 ? 'bg-danger' : boatRec.seaBeaufort >= 4 ? 'bg-warning text-dark' : 'bg-success'}">
+                                    Σαρωνικός: ${boatRec.seaBeaufort} Bf
+                                </span>
+                                <span class="sea-indicator ${boatRec.portBeaufort > 4 ? 'bg-danger' : boatRec.portBeaufort >= 3 ? 'bg-warning text-dark' : 'bg-success'}">
+                                    Λιμάνι: ${boatRec.portBeaufort} Bf
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card mt-3">
                     <div class="card-header bg-secondary text-white">
-                        <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Πρόβλεψη Επόμενων Ημερών & Σύσταση Ταξιδιού στην Αίγινα</h6>
+                        <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Πρόβλεψη Επόμενων Ημερών & Σύσταση Ταξιδιού</h6>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
@@ -624,9 +780,6 @@
                         ${details.map(d => `<li>${d}</li>`).join('')}
                     </ul>
                     ${bestDays.length > 0 ? `<div class="mt-2"><strong>Καλές μέρες για Αίγινα:</strong> ${bestDays.slice(0,3).join(', ')}</div>` : ''}
-                </div>
-                <div class="small text-muted mt-2">
-                    <i class="bi bi-info-circle"></i> Η γιαγιά μένει 80% στον Μπράλο. Συστάσεις για επισκέψεις 2-3 εβδομάδων στην Αίγινα όταν οι συνθήκες είναι καλύτερες.
                 </div>
             `;
         }
