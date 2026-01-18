@@ -46,6 +46,15 @@
         .plant-recommendation.water-later { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); color: white; }
         .plant-recommendation.no-water { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
         .recommendation-icon { font-size: 3rem; margin-bottom: 10px; }
+        .plant-card { border-radius: 10px; padding: 12px; margin: 8px 0; border-left: 4px solid; }
+        .plant-card.water-yes { border-color: #28a745; background: #d4edda; }
+        .plant-card.water-no { border-color: #dc3545; background: #f8d7da; }
+        .plant-card.water-caution { border-color: #ffc107; background: #fff3cd; }
+        .plant-icon { font-size: 1.5rem; margin-right: 10px; }
+        .plant-status { font-weight: bold; }
+        .plant-status.yes { color: #28a745; }
+        .plant-status.no { color: #dc3545; }
+        .plant-status.caution { color: #856404; }
         @media (max-width: 768px) { .temp-display { font-size: 2rem; } .weather-icon { font-size: 3rem; } .weather-details { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -95,10 +104,18 @@
         </div>
 
         <div class="row mb-4">
-            <div class="col-12">
+            <div class="col-md-6">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white"><h5><i class="bi bi-flower1"></i> Αίγινα - Πότισμα Φυτών</h5></div>
+                    <div class="card-body" id="aeginaPlants">
+                        <div class="loading-spinner"><div class="spinner-border text-info"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
                 <div class="card border-success">
-                    <div class="card-header bg-success text-white"><h5><i class="bi bi-flower1"></i> Πότισμα Φυτών - Συστάσεις</h5></div>
-                    <div class="card-body" id="plantWatering">
+                    <div class="card-header bg-success text-white"><h5><i class="bi bi-flower1"></i> Μπράλος - Πότισμα Φυτών</h5></div>
+                    <div class="card-body" id="mpralosPlants">
                         <div class="loading-spinner"><div class="spinner-border text-success"></div></div>
                     </div>
                 </div>
@@ -194,6 +211,23 @@
         const GREEK_MONTHS = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου', 'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου'];
         const HISTORY_KEY = 'weather_history_log';
 
+        // Plant definitions with watering requirements
+        const AEGINA_PLANTS = {
+            roses: { name: 'Τριαντάφυλλα', icon: '🌹', idealTemp: [15, 28], maxTemp: 35, minHumidity: 40, waterFreq: 'θερμό: καθημερινά, κρύο: 2-3/εβδ', needsMoreWater: true },
+            cactus: { name: 'Κάκτοι', icon: '🌵', idealTemp: [20, 40], maxTemp: 45, minHumidity: 10, waterFreq: 'κάθε 10-14 μέρες', needsMoreWater: false },
+            orange: { name: 'Πορτοκαλιά', icon: '🍊', idealTemp: [15, 30], maxTemp: 38, minHumidity: 30, waterFreq: 'θερμό: 2/εβδ, κρύο: 1/εβδ', needsMoreWater: true },
+            lemon: { name: 'Λεμονιά', icon: '🍋', idealTemp: [15, 30], maxTemp: 38, minHumidity: 30, waterFreq: 'θερμό: 2-3/εβδ, κρύο: 1/εβδ', needsMoreWater: true },
+            pear: { name: 'Αχλαδιά', icon: '🍐', idealTemp: [10, 25], maxTemp: 35, minHumidity: 40, waterFreq: 'θερμό: 2/εβδ, κρύο: 1/2εβδ', needsMoreWater: false },
+            apple: { name: 'Μηλιά', icon: '🍎', idealTemp: [10, 25], maxTemp: 32, minHumidity: 40, waterFreq: 'θερμό: 2/εβδ, κρύο: 1/2εβδ', needsMoreWater: false },
+            strawberry: { name: 'Φράουλες', icon: '🍓', idealTemp: [15, 26], maxTemp: 30, minHumidity: 50, waterFreq: 'καθημερινά σε ζέστη', needsMoreWater: true },
+            avocado: { name: 'Αβοκάντο', icon: '🥑', idealTemp: [18, 30], maxTemp: 35, minHumidity: 40, waterFreq: '2-3/εβδ, βαθύ πότισμα', needsMoreWater: true }
+        };
+
+        const MPRALOS_PLANTS = {
+            vegetables: { name: 'Λαχανικά', icon: '🥬', idealTemp: [15, 28], maxTemp: 35, minHumidity: 45, waterFreq: 'καθημερινά σε ζέστη', needsMoreWater: true },
+            roses: { name: 'Τριαντάφυλλα', icon: '🌹', idealTemp: [15, 28], maxTemp: 35, minHumidity: 40, waterFreq: 'θερμό: καθημερινά, κρύο: 2-3/εβδ', needsMoreWater: true }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             updateCurrentDate();
             loadWeatherData();
@@ -213,14 +247,15 @@
                 displayWeather('aeginaWeather', aeginaData, 'info');
                 displayWeather('mpralosWeather', mpralosData, 'success');
                 displayComparison(aeginaData, mpralosData);
-                displayPlantWatering(aeginaData, mpralosData);
+                displayPlantRecommendations('aeginaPlants', aeginaData, AEGINA_PLANTS);
+                displayPlantRecommendations('mpralosPlants', mpralosData, MPRALOS_PLANTS);
                 displayForecast(aeginaData, mpralosData);
                 logTodayWeather(aeginaData, mpralosData);
                 updateStatistics();
                 document.getElementById('lastUpdate').textContent = new Date().toLocaleString('el-GR');
             } catch (error) {
                 console.error('Error:', error);
-                ['aeginaWeather', 'mpralosWeather', 'comparisonSection', 'plantWatering', 'forecastSection'].forEach(id => {
+                ['aeginaWeather', 'mpralosWeather', 'comparisonSection', 'aeginaPlants', 'mpralosPlants', 'forecastSection'].forEach(id => {
                     document.getElementById(id).innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Σφάλμα φόρτωσης</div>';
                 });
             }
@@ -293,13 +328,125 @@
             return { text: 'Πολύ Κακή', class: 'rating-bad' };
         }
 
-        function displayPlantWatering(aegina, mpralos) {
-            const ar = getWateringRecommendation(aegina), mr = getWateringRecommendation(mpralos);
-            document.getElementById('plantWatering').innerHTML = `
-                <div class="row">
-                    <div class="col-md-6"><div class="plant-recommendation ${ar.class}"><div class="recommendation-icon"><i class="bi ${ar.icon}"></i></div><h5>Αίγινα</h5><p class="mb-0">${ar.text}</p><small>${ar.reason}</small></div></div>
-                    <div class="col-md-6"><div class="plant-recommendation ${mr.class}"><div class="recommendation-icon"><i class="bi ${mr.icon}"></i></div><h5>Μπράλος</h5><p class="mb-0">${mr.text}</p><small>${mr.reason}</small></div></div>
-                </div>`;
+        function displayPlantRecommendations(elementId, weatherData, plants) {
+            const c = weatherData.current;
+            const d = weatherData.daily;
+            const temp = c.temperature_2m;
+            const humidity = c.relative_humidity_2m;
+            const precip = c.precipitation;
+            const precipProb = d.precipitation_probability_max[0] || 0;
+            const wind = c.wind_speed_10m;
+            const hour = new Date().getHours();
+            const isGoodTime = (hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 20);
+            const rainExpected = precip > 1 || precipProb > 60;
+
+            let html = '';
+            for (const [key, plant] of Object.entries(plants)) {
+                const rec = getPlantWateringAdvice(plant, temp, humidity, precip, precipProb, wind, isGoodTime, rainExpected);
+                html += `
+                    <div class="plant-card ${rec.cardClass}">
+                        <div class="d-flex align-items-center">
+                            <span class="plant-icon">${plant.icon}</span>
+                            <div class="flex-grow-1">
+                                <strong>${plant.name}</strong>
+                                <div class="small text-muted">Συχνότητα: ${plant.waterFreq}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="plant-status ${rec.statusClass}">${rec.status}</span>
+                                <div class="small">${rec.reason}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            const summary = getSummaryRecommendation(temp, humidity, precip, precipProb, wind, isGoodTime);
+            html = `<div class="alert ${summary.alertClass} mb-3">
+                <i class="bi ${summary.icon}"></i> <strong>${summary.text}</strong>
+                <div class="small">${summary.detail}</div>
+            </div>` + html;
+
+            document.getElementById(elementId).innerHTML = html;
+        }
+
+        function getPlantWateringAdvice(plant, temp, humidity, precip, precipProb, wind, isGoodTime, rainExpected) {
+            // Rain expected - no watering needed
+            if (rainExpected) {
+                return { status: 'ΟΧΙ', reason: 'Βροχή', cardClass: 'water-no', statusClass: 'no' };
+            }
+
+            // Too hot - avoid watering during peak heat
+            if (temp > plant.maxTemp) {
+                return { status: 'ΑΠΟΦΥΓΗ', reason: 'Υπερβολική ζέστη', cardClass: 'water-caution', statusClass: 'caution' };
+            }
+
+            // Strong wind - water evaporates quickly
+            if (wind > 30) {
+                return { status: 'ΑΠΟΦΥΓΗ', reason: 'Δυνατός άνεμος', cardClass: 'water-caution', statusClass: 'caution' };
+            }
+
+            // Cactus special handling
+            if (plant.minHumidity <= 10) {
+                if (humidity > 60 || temp < 10) {
+                    return { status: 'ΟΧΙ', reason: 'Αρκετή υγρασία', cardClass: 'water-no', statusClass: 'no' };
+                }
+                if (temp > 25 && humidity < 30) {
+                    return { status: 'ΕΛΕΓΧΟΣ', reason: 'Ελέγξτε το χώμα', cardClass: 'water-caution', statusClass: 'caution' };
+                }
+                return { status: 'ΟΧΙ', reason: 'Σπάνιο πότισμα', cardClass: 'water-no', statusClass: 'no' };
+            }
+
+            // High water need plants in hot/dry conditions
+            if (plant.needsMoreWater && temp > 25 && humidity < plant.minHumidity) {
+                if (isGoodTime) {
+                    return { status: 'ΝΑΙ', reason: 'Ζέστη + ξηρασία', cardClass: 'water-yes', statusClass: 'yes' };
+                }
+                return { status: 'ΑΡΓΟΤΕΡΑ', reason: `Ποτίστε ${new Date().getHours() < 12 ? 'πρωί' : 'απόγευμα'}`, cardClass: 'water-caution', statusClass: 'caution' };
+            }
+
+            // Temperature in ideal range and good time
+            if (temp >= plant.idealTemp[0] && temp <= plant.idealTemp[1]) {
+                if (isGoodTime && humidity < plant.minHumidity + 20) {
+                    return { status: 'ΝΑΙ', reason: 'Ιδανικές συνθήκες', cardClass: 'water-yes', statusClass: 'yes' };
+                }
+                if (humidity < plant.minHumidity) {
+                    return { status: 'ΣΥΝΤΟΜΑ', reason: 'Χαμηλή υγρασία', cardClass: 'water-caution', statusClass: 'caution' };
+                }
+            }
+
+            // Cold weather - less watering
+            if (temp < plant.idealTemp[0]) {
+                return { status: 'ΛΙΓΟ', reason: 'Κρύος καιρός', cardClass: 'water-caution', statusClass: 'caution' };
+            }
+
+            // Default - check conditions
+            if (isGoodTime) {
+                return { status: 'ΕΛΕΓΧΟΣ', reason: 'Ελέγξτε το χώμα', cardClass: 'water-caution', statusClass: 'caution' };
+            }
+
+            return { status: 'ΑΡΓΟΤΕΡΑ', reason: 'Καλύτερα πρωί/απόγευμα', cardClass: 'water-caution', statusClass: 'caution' };
+        }
+
+        function getSummaryRecommendation(temp, humidity, precip, precipProb, wind, isGoodTime) {
+            if (precip > 1 || precipProb > 60) {
+                return { text: 'ΜΗΝ ΠΟΤΙΣΕΤΕ ΣΗΜΕΡΑ', detail: 'Αναμένεται βροχή', alertClass: 'alert-danger', icon: 'bi-x-circle' };
+            }
+            if (temp > 35) {
+                return { text: 'ΑΠΟΦΥΓΕΤΕ ΠΟΤΙΣΜΑ', detail: 'Υπερβολική ζέστη - ποτίστε νωρίς πρωί ή αργά απόγευμα', alertClass: 'alert-warning', icon: 'bi-exclamation-triangle' };
+            }
+            if (wind > 30) {
+                return { text: 'ΑΠΟΦΥΓΕΤΕ ΠΟΤΙΣΜΑ', detail: 'Δυνατός άνεμος - το νερό εξατμίζεται', alertClass: 'alert-warning', icon: 'bi-wind' };
+            }
+            if (isGoodTime && temp > 20 && humidity < 60) {
+                return { text: 'ΙΔΑΝΙΚΗ ΩΡΑ ΠΟΤΙΣΜΑΤΟΣ', detail: `Θερμοκρασία: ${Math.round(temp)}°C, Υγρασία: ${humidity}%`, alertClass: 'alert-success', icon: 'bi-check-circle' };
+            }
+            if (temp > 25 && humidity < 50) {
+                return { text: 'ΧΡΕΙΑΖΕΤΑΙ ΠΟΤΙΣΜΑ', detail: 'Ζεστός και ξηρός καιρός', alertClass: 'alert-info', icon: 'bi-droplet' };
+            }
+            const hour = new Date().getHours();
+            if (hour >= 10 && hour <= 17) {
+                return { text: 'ΠΕΡΙΜΕΝΕΤΕ', detail: 'Καλύτερα να ποτίσετε πρωί (6-9) ή απόγευμα (18-20)', alertClass: 'alert-secondary', icon: 'bi-clock' };
+            }
+            return { text: 'ΕΛΕΓΞΤΕ ΤΑ ΦΥΤΑ', detail: 'Κανονικές συνθήκες - ποτίστε αν χρειάζεται', alertClass: 'alert-info', icon: 'bi-search' };
         }
 
         function getWateringRecommendation(data) {
