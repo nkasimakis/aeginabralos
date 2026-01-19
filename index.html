@@ -123,12 +123,24 @@
             </div>
         </div>
 
-        <!-- Grandma Section -->
+        <!-- 7-Day Forecast - Third position -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white"><h5><i class="bi bi-calendar-week"></i> Πρόβλεψη 7 Ημερών - Βέλτιστη Ημέρα Ποτίσματος</h5></div>
+                    <div class="card-body table-responsive" id="forecastSection">
+                        <div class="loading-spinner"><div class="spinner-border text-primary"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health & Travel Section -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card grandma-card">
                     <div class="card-header grandma-header text-white">
-                        <h5 class="mb-0"><i class="bi bi-heart-pulse"></i> Πού Θα Έπρεπε να Είναι η Γιαγιά;</h5>
+                        <h5 class="mb-0"><i class="bi bi-heart-pulse"></i> Πού Θα Ήταν Καλύτερα να Είσαι;</h5>
                         <small>Συστάσεις για ασθματικούς ευαίσθητους στο κρύο</small>
                     </div>
                     <div class="card-body" id="grandmaSection">
@@ -152,17 +164,6 @@
                     <div class="card-header bg-success text-white"><h5><i class="bi bi-flower1"></i> Μπράλος - Πότισμα Φυτών</h5></div>
                     <div class="card-body" id="mpralosPlants">
                         <div class="loading-spinner"><div class="spinner-border text-success"></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white"><h5><i class="bi bi-calendar-week"></i> Πρόβλεψη 7 Ημερών - Βέλτιστη Ημέρα Ποτίσματος</h5></div>
-                    <div class="card-body table-responsive" id="forecastSection">
-                        <div class="loading-spinner"><div class="spinner-border text-primary"></div></div>
                     </div>
                 </div>
             </div>
@@ -581,44 +582,13 @@
                 </div>
                 
                 <div class="alert ${todayClass === 'aegina-rec' ? 'alert-info' : 'alert-success'} text-center">
-                    <h5><i class="bi bi-house-heart"></i> Σήμερα η γιαγιά θα έπρεπε να είναι:</h5>
+                    <h5><i class="bi bi-house-heart"></i> Πού θα ήταν καλύτερα να είσαι τώρα:</h5>
                     <h3>${todayRec}</h3>
-                </div>
-
-                <!-- Boat Travel Section -->
-                <div class="boat-card boat-${boatRec.status}">
-                    <div class="row align-items-center">
-                        <div class="col-md-4 text-center">
-                            <i class="bi bi-${boatRec.status === 'safe' ? 'ship' : boatRec.status === 'caution' ? 'exclamation-triangle' : 'x-octagon'}" style="font-size: 2.5rem;"></i>
-                            <h5 class="mt-2 mb-0">${boatRec.message}</h5>
-                        </div>
-                        <div class="col-md-8">
-                            <div class="row">
-                                <div class="col-6">
-                                    ${boatRec.details.map(d => `<div class="small"><i class="bi bi-wind"></i> ${d}</div>`).join('')}
-                                </div>
-                                <div class="col-6">
-                                    ${boatRec.warnings.length > 0 ? boatRec.warnings.map(w => `<div class="small"><i class="bi bi-exclamation-circle"></i> ${w}</div>`).join('') : '<div class="small"><i class="bi bi-check-circle"></i> Κανένα πρόβλημα</div>'}
-                                </div>
-                            </div>
-                            <div class="mt-2 small">
-                                <span class="sea-indicator ${boatRec.southWind ? 'bg-warning text-dark' : 'bg-light'}">
-                                    ${boatRec.southWind ? '<i class="bi bi-arrow-down"></i> Νότιος' : '<i class="bi bi-check"></i> Όχι νότιος'}
-                                </span>
-                                <span class="sea-indicator ${boatRec.seaBeaufort > 4 ? 'bg-danger' : boatRec.seaBeaufort >= 4 ? 'bg-warning text-dark' : 'bg-success'}">
-                                    Σαρωνικός: ${boatRec.seaBeaufort} Bf
-                                </span>
-                                <span class="sea-indicator ${boatRec.portBeaufort > 4 ? 'bg-danger' : boatRec.portBeaufort >= 3 ? 'bg-warning text-dark' : 'bg-success'}">
-                                    Λιμάνι: ${boatRec.portBeaufort} Bf
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="card mt-3">
                     <div class="card-header bg-secondary text-white">
-                        <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Πρόβλεψη Επόμενων Ημερών & Σύσταση Ταξιδιού</h6>
+                        <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Σε ποια περίοδο 2-3 εβδομάδων θα ήταν καλύτερα</h6>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
@@ -638,6 +608,78 @@
                             </div>
                         </div>
                         ${travelRec}
+                    </div>
+                </div>
+
+                <!-- Boat Travel Section -->
+                <div class="card mt-3 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-ship"></i> Ταξίδι με Πλοίο - Να ταξιδέψω ή όχι;</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="boat-card boat-${boatRec.status}">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 text-center">
+                                    <i class="bi bi-${boatRec.status === 'safe' ? 'ship' : boatRec.status === 'caution' ? 'exclamation-triangle' : 'x-octagon'}" style="font-size: 2.5rem;"></i>
+                                    <h5 class="mt-2 mb-0">${boatRec.message}</h5>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            ${boatRec.details.map(d => `<div class="small"><i class="bi bi-wind"></i> ${d}</div>`).join('')}
+                                        </div>
+                                        <div class="col-6">
+                                            ${boatRec.warnings.length > 0 ? boatRec.warnings.map(w => `<div class="small"><i class="bi bi-exclamation-circle"></i> ${w}</div>`).join('') : '<div class="small"><i class="bi bi-check-circle"></i> Κανένα πρόβλημα</div>'}
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small">
+                                        <span class="sea-indicator ${boatRec.southWind ? 'bg-warning text-dark' : 'bg-success text-white'}">
+                                            ${boatRec.southWind ? '<i class="bi bi-arrow-down"></i> Νότιος άνεμος' : '<i class="bi bi-check"></i> Ευνοϊκός άνεμος'}
+                                        </span>
+                                        <span class="sea-indicator ${boatRec.seaBeaufort > 4 ? 'bg-danger text-white' : boatRec.seaBeaufort >= 4 ? 'bg-warning text-dark' : 'bg-success text-white'}">
+                                            Σαρωνικός: ${boatRec.seaBeaufort} Bf
+                                        </span>
+                                        <span class="sea-indicator ${boatRec.portBeaufort > 4 ? 'bg-danger text-white' : boatRec.portBeaufort >= 3 ? 'bg-warning text-dark' : 'bg-success text-white'}">
+                                            Λιμάνι: ${boatRec.portBeaufort} Bf
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6><i class="bi bi-clock-history"></i> Δρομολόγια Πλοίων (επόμενες 3 μέρες)</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-white py-2">
+                                            <small><strong>Πειραιάς → Αίγινα</strong></small>
+                                        </div>
+                                        <div class="card-body py-2">
+                                            <small>
+                                                <div><strong>Flying Dolphins:</strong> 07:30, 09:00, 14:30, 17:30, 20:00</div>
+                                                <div><strong>Συμβατικά:</strong> 06:30, 08:00, 13:00, 15:00, 18:00, 21:00</div>
+                                                <div class="text-muted mt-1">Διάρκεια: ~40λ (δελφίνι) / ~70λ (συμβατικό)</div>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-success text-white py-2">
+                                            <small><strong>Αίγινα → Πειραιάς</strong></small>
+                                        </div>
+                                        <div class="card-body py-2">
+                                            <small>
+                                                <div><strong>Flying Dolphins:</strong> 08:15, 10:00, 15:30, 18:30, 21:00</div>
+                                                <div><strong>Συμβατικά:</strong> 07:15, 09:00, 14:00, 16:00, 19:00, 22:00</div>
+                                                <div class="text-muted mt-1">* Ενδεικτικά - επιβεβαιώστε στο <a href="https://www.openseas.gr" target="_blank">openseas.gr</a></div>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
