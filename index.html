@@ -242,6 +242,26 @@
             </div>
         </div>
 
+        <!-- News Section for Bralos -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-newspaper"></i> Νέα & Ειδήσεις - Μπράλος & Φθιώτιδα</h5>
+                        <div>
+                            <small id="newsLastUpdate" class="me-2"></small>
+                            <button class="btn btn-sm btn-outline-light" onclick="refreshNews()" title="Ανανέωση ειδήσεων">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="newsSection">
+                        <div class="loading-spinner"><div class="spinner-border text-info"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -343,12 +363,18 @@
             saronicGulf: { name: 'Σαρωνικός (πριν Πειραιά)', lat: 37.888070, lon: 23.564009 }
         };
 
+        // News storage key
+        const NEWS_STORAGE_KEY = 'bralos_news_cache';
+        const NEWS_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
         document.addEventListener('DOMContentLoaded', () => {
             updateCurrentDate();
             loadWeatherData();
             loadHistory();
             updateStatistics();
+            loadNews();
             setInterval(loadWeatherData, 30 * 60 * 1000);
+            setInterval(loadNews, NEWS_UPDATE_INTERVAL); // Check for news update daily
         });
 
         function updateCurrentDate() {
@@ -1122,6 +1148,192 @@
             let csv = 'Ημερομηνία,Αίγινα Θερμ,Αίγινα Υγρασία,Αίγινα Βαθμ,Μπράλος Θερμ,Μπράλος Υγρασία,Μπράλος Βαθμ,Καλύτερη,Πότισμα\n';
             h.forEach(e => { csv += `${e.date},${e.aegina.temp},${e.aegina.humidity},${e.aegina.score},${e.mpralos.temp},${e.mpralos.humidity},${e.mpralos.score},${e.bestLocation},${e.aegina.shouldWater||e.mpralos.shouldWater?'Ναι':'Όχι'}\n`; });
             const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); link.download = `weather_log_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        }
+
+        // News functions
+        function loadNews() {
+            const cached = getCachedNews();
+            const now = Date.now();
+            
+            // Check if we need to update (once per day)
+            if (cached && (now - cached.timestamp) < NEWS_UPDATE_INTERVAL) {
+                displayNews(cached.data);
+                return;
+            }
+            
+            // Fetch fresh news
+            fetchNews();
+        }
+
+        function getCachedNews() {
+            try {
+                return JSON.parse(localStorage.getItem(NEWS_STORAGE_KEY));
+            } catch {
+                return null;
+            }
+        }
+
+        function saveCachedNews(data) {
+            localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify({
+                timestamp: Date.now(),
+                data: data
+            }));
+        }
+
+        async function fetchNews() {
+            // We'll use multiple RSS-to-JSON services and local news sources
+            const newsSection = document.getElementById('newsSection');
+            
+            try {
+                // Use RSS2JSON API (free tier) for Greek news
+                const searchTerms = ['Μπράλος', 'Φθιώτιδα', 'Λαμία'];
+                const newsItems = [];
+                
+                // Try to fetch from RSS2JSON (Google News RSS)
+                for (const term of searchTerms) {
+                    try {
+                        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(term)}&hl=el&gl=GR&ceid=GR:el`;
+                        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=5`;
+                        
+                        const response = await fetch(apiUrl);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.status === 'ok' && data.items) {
+                                data.items.forEach(item => {
+                                    if (!newsItems.find(n => n.title === item.title)) {
+                                        newsItems.push({
+                                            title: item.title,
+                                            link: item.link,
+                                            pubDate: item.pubDate,
+                                            source: item.author || 'Google News',
+                                            category: term
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.log(`Failed to fetch news for ${term}:`, e);
+                    }
+                }
+                
+                // Sort by date
+                newsItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+                
+                // Take top 10
+                const topNews = newsItems.slice(0, 10);
+                
+                if (topNews.length > 0) {
+                    saveCachedNews(topNews);
+                    displayNews(topNews);
+                } else {
+                    // Fallback to static links
+                    displayNewsLinks();
+                }
+            } catch (error) {
+                console.error('News fetch error:', error);
+                displayNewsLinks();
+            }
+        }
+
+        function displayNews(newsItems) {
+            const newsSection = document.getElementById('newsSection');
+            const updateEl = document.getElementById('newsLastUpdate');
+            
+            const cached = getCachedNews();
+            if (cached) {
+                const updateDate = new Date(cached.timestamp);
+                updateEl.textContent = `Ενημέρωση: ${updateDate.toLocaleDateString('el-GR')} ${updateDate.toLocaleTimeString('el-GR', {hour: '2-digit', minute: '2-digit'})}`;
+            }
+            
+            if (!newsItems || newsItems.length === 0) {
+                displayNewsLinks();
+                return;
+            }
+            
+            let html = '<div class="list-group list-group-flush">';
+            
+            newsItems.forEach(item => {
+                const date = new Date(item.pubDate);
+                const dateStr = date.toLocaleDateString('el-GR');
+                const categoryBadge = item.category === 'Μπράλος' ? 'bg-success' : 
+                                     item.category === 'Φθιώτιδα' ? 'bg-primary' : 'bg-secondary';
+                
+                html += `
+                    <a href="${item.link}" target="_blank" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-2">
+                                <strong>${item.title}</strong>
+                                <div class="small text-muted">
+                                    <i class="bi bi-calendar"></i> ${dateStr} | 
+                                    <i class="bi bi-newspaper"></i> ${item.source}
+                                </div>
+                            </div>
+                            <span class="badge ${categoryBadge}">${item.category}</span>
+                        </div>
+                    </a>
+                `;
+            });
+            
+            html += '</div>';
+            html += getNewsLinksHtml();
+            
+            newsSection.innerHTML = html;
+        }
+
+        function displayNewsLinks() {
+            const newsSection = document.getElementById('newsSection');
+            const updateEl = document.getElementById('newsLastUpdate');
+            updateEl.textContent = '';
+            
+            newsSection.innerHTML = `
+                <div class="alert alert-info small mb-3">
+                    <i class="bi bi-info-circle"></i> Δείτε τα τελευταία νέα από τις παρακάτω πηγές:
+                </div>
+                ${getNewsLinksHtml()}
+            `;
+        }
+
+        function getNewsLinksHtml() {
+            return `
+                <div class="mt-3">
+                    <h6><i class="bi bi-link-45deg"></i> Πηγές Ειδήσεων</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="list-group list-group-flush">
+                                <a href="https://www.google.com/search?q=Μπράλος+Φθιώτιδα+νέα&tbm=nws" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-google text-danger"></i> Google News - Μπράλος
+                                </a>
+                                <a href="https://www.lamianow.gr" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-newspaper text-primary"></i> LamiaΝow
+                                </a>
+                                <a href="https://www.lamiareport.gr" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-newspaper text-info"></i> Lamia Report
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="list-group list-group-flush">
+                                <a href="https://www.fthiotida.gr" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-geo-alt text-success"></i> Fthiotida.gr
+                                </a>
+                                <a href="https://www.star.gr/eidhseis/ellada/sterea-ellada/" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-star text-warning"></i> Star - Στερεά Ελλάδα
+                                </a>
+                                <a href="https://www.ert.gr/perifereiakoi-stathmoi/ert-lamias/" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-broadcast text-danger"></i> ΕΡΤ Λαμίας
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function refreshNews() {
+            localStorage.removeItem(NEWS_STORAGE_KEY);
+            document.getElementById('newsSection').innerHTML = '<div class="loading-spinner"><div class="spinner-border text-info"></div></div>';
+            fetchNews();
         }
     </script>
 </body>
