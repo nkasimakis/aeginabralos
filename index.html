@@ -75,7 +75,14 @@
         .boat-caution { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); color: white; }
         .boat-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
         .sea-indicator { display: inline-block; padding: 5px 12px; border-radius: 15px; margin: 3px; font-size: 0.85rem; }
-        @media (max-width: 768px) { .temp-display { font-size: 2rem; } .weather-icon { font-size: 3rem; } .weather-details { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { 
+            .temp-display { font-size: 2rem; } 
+            .weather-icon { font-size: 3rem; } 
+            .weather-details { grid-template-columns: 1fr; }
+            .card { margin-top: 10px; margin-bottom: 10px; }
+            .row.mb-4 { margin-bottom: 0.5rem !important; }
+            .col-md-6 { margin-bottom: 15px; }
+        }
     </style>
 </head>
 <body>
@@ -736,6 +743,10 @@
                                         <a href="https://www.saronicferries.gr" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                             <span><i class="bi bi-truck text-warning"></i> <strong>Saronic Ferries</strong> - Συμβατικά (με αυτοκίνητο)</span>
                                             <span class="badge bg-warning text-dark">~70 λεπτά</span>
+                                        </a>
+                                        <a href="https://www.aeginaportal.gr/dromologia-ploion.html" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <span><i class="bi bi-globe text-danger"></i> <strong>Aegina Portal</strong> - Τοπικός οδηγός δρομολογίων</span>
+                                            <span class="badge bg-danger">aeginaportal.gr</span>
                                         </a>
                                     </div>
                                     <div class="small text-muted mt-2">
